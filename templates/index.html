@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 50px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+        }
+        .result-box {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 5px;
+            display: none;
+        }
+        .positive {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .negative {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        .neutral {
+            background-color: #e2e3e5;
+            border: 1px solid #d6d8db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Sentiment Analysis</h1>
+        <div class="card">
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="textInput" class="form-label">Enter text to analyze:</label>
+                    <textarea class="form-control" id="textInput" rows="4" placeholder="Type or paste text here..."></textarea>
+                </div>
+                <button id="analyzeBtn" class="btn btn-primary">Analyze Sentiment</button>
+            </div>
+        </div>
+        
+        <div id="resultBox" class="result-box">
+            <h4>Analysis Result:</h4>
+            <p><strong>Sentiment:</strong> <span id="sentimentResult"></span></p>
+            <p><strong>Confidence:</strong> <span id="confidenceResult"></span></p>
+        </div>
+        
+        <div class="mt-5">
+            <h3>Recent Analyses</h3>
+            <ul id="historyList" class="list-group">
+                <!-- History items will be added here -->
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('analyzeBtn').addEventListener('click', async () => {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                alert('Please enter some text to analyze');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text })
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    alert('Error: ' + result.error);
+                    return;
+                }
+                
+                // Display result
+                const resultBox = document.getElementById('resultBox');
+                resultBox.style.display = 'block';
+                
+                // Remove previous classes
+                resultBox.classList.remove('positive', 'negative', 'neutral');
+                
+                // Add appropriate class based on sentiment
+                if (result.sentiment === 'Positive') {
+                    resultBox.classList.add('positive');
+                } else if (result.sentiment === 'Negative') {
+                    resultBox.classList.add('negative');
+                } else {
+                    resultBox.classList.add('neutral');
+                }
+                
+                document.getElementById('sentimentResult').textContent = result.sentiment;
+                document.getElementById('confidenceResult').textContent = result.confidence;
+                
+                // Add to history
+                addToHistory(text, result.sentiment);
+                
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+        
+        function addToHistory(text, sentiment) {
+            const historyList = document.getElementById('historyList');
+            const listItem = document.createElement('li');
+            
+            // Truncate text if too long
+            const displayText = text.length > 50 ? text.substring(0, 50) + '...' : text;
+            
+            listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+            listItem.innerHTML = `
+                <span>${displayText}</span>
+                <span class="badge ${sentiment === 'Positive' ? 'bg-success' : sentiment === 'Negative' ? 'bg-danger' : 'bg-secondary'}">${sentiment}</span>
+            `;
+            
+            // Add to the top of the list
+            historyList.insertBefore(listItem, historyList.firstChild);
+            
+            // Limit history to 5 items
+            if (historyList.children.length > 5) {
+                historyList.removeChild(historyList.lastChild);
+            }
+        }
+    </script>
+</body>
+</html>
